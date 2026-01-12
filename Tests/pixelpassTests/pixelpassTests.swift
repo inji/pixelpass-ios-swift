@@ -211,6 +211,41 @@ class PixelPassTests: XCTestCase {
             XCTAssertEqual(message, "error occurred while parsing  data - The operation couldn’t be completed. (pixelpass.decodeError error 0.)", "The error message does not match")
         }
     }
+    
+    func testGenerateQRImageDataProducesPNG() {
+        let text = "Hello QR"
+        guard let data = pixelPass.generateQRImageData(qrText: text, ecc: ECC.L) else {
+            return XCTFail("Expected non-nil PNG data for valid input")
+        }
+        // PNG signature: 89 50 4E 47 0D 0A 1A 0A
+        let pngMagic: [UInt8] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+        let prefix = Array(data.prefix(8))
+        XCTAssertEqual(prefix, pngMagic, "Generated data should start with PNG signature")
+        XCTAssertTrue(data.count > 0, "Generated PNG should be non-empty")
+    }
+    
+    func testGenerateQRImageDataAllECCLevels() {
+        let text = "ECC levels"
+        for level in [ECC.L, .M, .Q, .H] {
+            let data = pixelPass.generateQRImageData(qrText: text, ecc: level)
+            XCTAssertNotNil(data, "Expected PNG data for ECC level \(level)")
+        }
+    }
+    
+    func testGenerateQRImageDataRenderableUIImage() {
+        let text = "Renderable"
+        guard let data = pixelPass.generateQRImageData(qrText: text, ecc: ECC.M) else {
+            return XCTFail("Expected non-nil PNG data")
+        }
+        #if canImport(UIKit)
+        let image = UIImage(data: data)
+        XCTAssertNotNil(image, "PNG data should decode to UIImage")
+        if let image = image {
+            XCTAssertGreaterThan(image.size.width, 0, "Image width should be > 0")
+            XCTAssertGreaterThan(image.size.height, 0, "Image height should be > 0")
+        }
+        #endif
+    }
 }
 
 func XCTAssertEqualDictionaries(_ expected: [String: Any], _ actual: [String: Any], file: StaticString = #file, line: UInt = #line) {
