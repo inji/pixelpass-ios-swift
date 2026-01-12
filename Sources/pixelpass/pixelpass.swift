@@ -107,12 +107,33 @@ public class PixelPass {
         return base45EncodedString
     }
     
+    private func convertQRDataIntoQRImage(
+        qrText: String,
+        ecc: ECC = .L
+    ) -> Data? {
+
+        let data = qrText.data(using: .ascii)
+
+        if let filter = CIFilter(name: "CIQRCodeGenerator") {
+            filter.setValue(data, forKey: "inputMessage")
+            filter.setValue(ecc.rawValue, forKey: "inputCorrectionLevel")
+
+            if let qrImage = filter.outputImage {
+                let context = CIContext()
+                if let cgImage = context.createCGImage(qrImage, from: qrImage.extent) {
+                    return UIImage(cgImage: cgImage).pngData()
+                }
+            }
+        }
+        return nil
+    }
+    
     public func generateQRCodeFromQRData(
         qrData: String,
         ecc: ECC = .L
     ) -> Data? {
 
-        return QRCodeHelper.generateQRImage(
+        return convertQRDataIntoQRImage(
             qrText: qrData,
             ecc: ecc
         )
@@ -124,7 +145,7 @@ public class PixelPass {
                 return nil
             }
 
-        return QRCodeHelper.generateQRImage(
+            return convertQRDataIntoQRImage(
                 qrText: qrText + header,
                 ecc: ecc
             )
