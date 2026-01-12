@@ -106,8 +106,8 @@ public class PixelPass {
         base45EncodedString = compressedData.toBase45()
         return base45EncodedString
     }
-    
-    private func convertQRDataIntoQRImage(
+
+    public func generateQRImageData(
         qrText: String,
         ecc: ECC = .L
     ) -> Data? {
@@ -127,17 +127,6 @@ public class PixelPass {
         }
         return nil
     }
-    
-    public func generateQRCodeFromQRData(
-        qrData: String,
-        ecc: ECC = .L
-    ) -> Data? {
-
-        return convertQRDataIntoQRImage(
-            qrText: qrData,
-            ecc: ecc
-        )
-    }
 
     
     public func generateQRCode(data: String, ecc: ECC = ECC.L, header: String = "") -> Data? {
@@ -145,7 +134,7 @@ public class PixelPass {
                 return nil
             }
 
-            return convertQRDataIntoQRImage(
+            return generateQRImageData(
                 qrText: qrText + header,
                 ecc: ecc
             )
