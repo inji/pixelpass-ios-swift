@@ -112,7 +112,10 @@ public class PixelPass {
         ecc: ECC = .L
     ) -> Data? {
 
-        let data = qrText?.data(using: String.Encoding.ascii)
+        guard let data = qrText.data(using: String.Encoding.ascii) else {
+           return nil
+        }
+
 
         if let filter = CIFilter(name: "CIQRCodeGenerator") {
             filter.setValue(data, forKey: "inputMessage")

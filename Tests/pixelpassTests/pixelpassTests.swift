@@ -237,14 +237,13 @@ class PixelPassTests: XCTestCase {
         guard let data = pixelPass.generateQRImageData(qrText: text, ecc: ECC.M) else {
             return XCTFail("Expected non-nil PNG data")
         }
-        #if canImport(UIKit)
+        
         let image = UIImage(data: data)
         XCTAssertNotNil(image, "PNG data should decode to UIImage")
         if let image = image {
             XCTAssertGreaterThan(image.size.width, 0, "Image width should be > 0")
             XCTAssertGreaterThan(image.size.height, 0, "Image height should be > 0")
         }
-        #endif
     }
 }
 
