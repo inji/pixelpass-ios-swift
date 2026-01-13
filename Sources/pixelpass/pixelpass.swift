@@ -112,19 +112,21 @@ public class PixelPass {
         ecc: ECC = .L
     ) -> Data? {
 
-        let data = qrText.data(using: .ascii)
+        let data = qrText?.data(using: String.Encoding.ascii)
 
         if let filter = CIFilter(name: "CIQRCodeGenerator") {
             filter.setValue(data, forKey: "inputMessage")
             filter.setValue(ecc.rawValue, forKey: "inputCorrectionLevel")
 
             if let qrImage = filter.outputImage {
-                let context = CIContext()
+                let context = CIContext(options: nil)
                 if let cgImage = context.createCGImage(qrImage, from: qrImage.extent) {
-                    return UIImage(cgImage: cgImage).pngData()
+                    let uiImage = UIImage(cgImage: cgImage)
+                    return uiImage.pngData()
                 }
             }
         }
+
         return nil
     }
 
