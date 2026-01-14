@@ -167,7 +167,7 @@ do {
 
 ### `generateQRImageData(qrText: String, ecc: ECC = .L) -> Data?`
 
-Genarate a QR code from a full QR string and returns **PNG image data**.
+Generate a QR code from a full QR string and returns **PNG image data**.
 
 **Parameters:**
 - `qrText`: The fully encoded QR string (e.g., from `generateQRData` + optional header).
