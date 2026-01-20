@@ -22,7 +22,10 @@ To include PixelPass in your Swift project:
 
 ### `generateQRCode(data: String, ecc: ECC = .L, header: String = "")`
 
-Generates a QR code from the provided string. The method first compresses and encodes the input string, then creates a QR code with an optional error correction level and header. The QR code is returned as PNG data.
+Generates a QR code from the provided string. The input is encoded internally,
+an optional header is appended as a suffix, and the resulting QR code is returned
+as PNG data.
+
 
 **Parameters:**
 - `data`: The string to encode and generate a QR code from.
@@ -160,3 +163,31 @@ do {
     print("error occurred while decoding \(error.localizedDescription)")
 }
 ```
+
+
+### `generateQRImageData(qrText: String, ecc: ECC = .L) -> Data?`
+
+Generate a QR code from a full QR string and returns **PNG image data**.
+
+**Parameters:**
+- `qrText`: The fully encoded QR string (e.g., from `generateQRData` + optional header).
+- `ecc`: Error correction level with a default of `.L`.
+
+**Returns:**
+- A `Data` object containing PNG image bytes of the QR code, or `nil` on failure.
+
+**Example Usage:**
+
+```swift
+let pixelPass = PixelPass()
+
+// First generate the QR string
+if let qrString = pixelPass.generateQRData("Hello World") {
+    // Then render the image data
+    if let imageData = pixelPass.generateQRImageData(qrText: qrString, ecc: .M) {
+        // Now you can create a UIImage
+        let uiImage = UIImage(data: imageData)
+        // Use it in your UI
+    }
+}
+

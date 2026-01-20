@@ -106,30 +106,43 @@ public class PixelPass {
         base45EncodedString = compressedData.toBase45()
         return base45EncodedString
     }
-    
-    public func generateQRCode(data: String, ecc: ECC = ECC.L, header: String = "") -> Data? {
-        var qrText = generateQRData(data)
-        if qrText == nil {
-            return nil
-        } else {
-            qrText! += header
+
+    public func generateQRImageData(
+        qrText: String,
+        ecc: ECC = .L
+    ) -> Data? {
+
+        guard let data = qrText.data(using: String.Encoding.ascii) else {
+           return nil
         }
-        let data = qrText?.data(using: String.Encoding.ascii)
-        
+
+
         if let filter = CIFilter(name: "CIQRCodeGenerator") {
             filter.setValue(data, forKey: "inputMessage")
             filter.setValue(ecc.rawValue, forKey: "inputCorrectionLevel")
-            
+
             if let qrImage = filter.outputImage {
                 let context = CIContext(options: nil)
                 if let cgImage = context.createCGImage(qrImage, from: qrImage.extent) {
                     let uiImage = UIImage(cgImage: cgImage)
-                    return uiImage.pngData() // Get PNG data
+                    return uiImage.pngData()
                 }
             }
         }
-        
+
         return nil
+    }
+
+    
+    public func generateQRCode(data: String, ecc: ECC = ECC.L, header: String = "") -> Data? {
+        guard let qrText = generateQRData(data) else {
+                return nil
+            }
+
+            return generateQRImageData(
+                qrText: qrText + header,
+                ecc: ecc
+            )
     }
     
     public func getMappedData(stringData: String, mapper: [String:String], cborEnable : Bool = false) -> String {
