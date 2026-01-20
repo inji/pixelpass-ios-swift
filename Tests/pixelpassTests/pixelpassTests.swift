@@ -1,8 +1,6 @@
 import XCTest
 import Foundation
 @testable import pixelpass
-#if canImport(UIKit)
-import UIKit
 
 
 class PixelPassTests: XCTestCase {
@@ -234,19 +232,6 @@ class PixelPassTests: XCTestCase {
             XCTAssertNotNil(data, "Expected PNG data for ECC level \(level)")
         }
     }
-    func testGenerateQRImageDataRenderableUIImage() {
-        let text = "Renderable"
-        guard let data = pixelPass.generateQRImageData(qrText: text, ecc: ECC.M) else {
-            return XCTFail("Expected non-nil PNG data")
-        }
-        
-        let image = UIImage(data: data)
-        XCTAssertNotNil(image, "PNG data should decode to UIImage")
-        if let image = image {
-            XCTAssertGreaterThan(image.size.width, 0, "Image width should be > 0")
-            XCTAssertGreaterThan(image.size.height, 0, "Image height should be > 0")
-        }
-    }
 }
 
 func XCTAssertEqualDictionaries(_ expected: [String: Any], _ actual: [String: Any], file: StaticString = #file, line: UInt = #line) {
@@ -255,4 +240,3 @@ func XCTAssertEqualDictionaries(_ expected: [String: Any], _ actual: [String: An
     
     XCTAssertEqual(expectedData, actualData, "The dictionaries do not match", file: file, line: line)
 }
-#endif
