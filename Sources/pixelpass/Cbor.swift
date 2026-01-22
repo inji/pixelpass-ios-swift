@@ -80,42 +80,60 @@ extension CBOR {
 
 func convertToCBOREncodableFormat(input: Any) -> CBOR? {
     switch input {
-    case let array as [Any]:
-        return .array(array.compactMap { convertToCBOREncodableFormat(input: $0) })
-        
-    case let dict as [String: Any]:
+
+    case let dict as [AnyHashable: Any]:
         var map = [CBOR: CBOR]()
         for (key, value) in dict {
-            if let keyCbor = convertToCBOREncodableFormat(input: key),
-               let valueCbor = convertToCBOREncodableFormat(input: value) {
-                map[keyCbor] = valueCbor
-            } else {
-                os_log("Non-encodable key or value encountered: %{PUBLIC}@", log: OSLog.default, type: .error, key)
-            }
+            guard
+                let keyCbor = convertToCBOREncodableFormat(input: key),
+                let valueCbor = convertToCBOREncodableFormat(input: value)
+            else { continue }
+            map[keyCbor] = valueCbor
         }
         return .map(map)
-        
+
+    case let array as [Any]:
+        return .array(array.compactMap {
+            convertToCBOREncodableFormat(input: $0)
+        })
+
+    case let int as Int:
+            if int >= 0 {
+                return .unsignedInt(UInt64(int))
+            } else {
+                let int64 = Int64(int)
+                return .negativeInt(UInt64(-1 - int64))
+            }
+
+    case let uint as UInt:
+        return .unsignedInt(UInt64(uint))
+
+    case let uint64 as UInt64:
+        return .unsignedInt(uint64)
+
     case let string as String:
         return .utf8String(string)
-        
-    case let base64String as String:
-        let data = Data(base64Encoded: base64String)
-        return .byteString([UInt8](data!))
-        
-    case let unsignedInt as UInt64:
-        return .unsignedInt(unsignedInt)
-        
+
     case let bool as Bool:
         return .boolean(bool)
-        
+
     case let double as Double:
         return .double(double)
-        
+
+    case let data as Data:
+        return .byteString([UInt8](data))
+
     case is NSNull:
         return .null
-        
+
     default:
-        os_log("Unhandled or non-encodable JSON type encountered: %{PUBLIC}@", log: OSLog.default, type: .error, String(describing: input))
+        os_log(
+            "Unhandled or non-encodable JSON type encountered: %{PUBLIC}@",
+            log: .default,
+            type: .error,
+            String(describing: input)
+        )
         return nil
     }
 }
+

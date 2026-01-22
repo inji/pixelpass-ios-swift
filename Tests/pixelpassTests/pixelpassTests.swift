@@ -232,6 +232,361 @@ class PixelPassTests: XCTestCase {
             XCTAssertNotNil(data, "Expected PNG data for ECC level \(level)")
         }
     }
+    
+    func testClaim169Default_ObjectRoundTrip() throws {
+        let originalJson = """
+        {
+          "ID":"102030",
+          "Full Name":"John",
+          "Gender":"Male",
+          "Left Middle Finger":{
+            "Data":"9988",
+            "Data format":"Template",
+            "Data sub format":"Fingerprint Template NIST"
+          }
+        }
+        """
+
+        let jsonObject = try JSONSerialization.jsonObject(
+            with: Data(originalJson.utf8)
+        ) as! [String: Any]
+
+        let encoded = pixelPass.getMappedData(
+            jsonData: jsonObject,
+            cborEnable: true
+        ) as! String
+
+        XCTAssertFalse(encoded.isEmpty)
+
+        let decoded = pixelPass.decodeMappedData(data: encoded)
+
+        let decodedJson = try JSONSerialization.jsonObject(
+            with: Data(decoded.utf8)
+        ) as! [String: Any]
+
+        
+        XCTAssertEqual(decodedJson["ID"] as? String, "102030")
+        XCTAssertEqual(decodedJson["Full Name"] as? String, "John")
+        XCTAssertEqual(decodedJson["Gender"] as? String, "Male")
+
+        
+        let biometric = decodedJson["Left Middle Finger"] as! [String: Any]
+
+        XCTAssertEqual(biometric["Data"] as? String, "9988")
+        XCTAssertEqual(biometric["Data format"] as? String, "Template")
+        XCTAssertEqual(
+            biometric["Data sub format"] as? String,
+            "Fingerprint Template NIST"
+        )
+    }
+
+    
+    func testClaim169_UsesIntegerKeys() {
+        let json: [String: Any] = [
+            "Full Name": "John Doe",
+            "Gender": "Male"
+        ]
+
+        let mapped = pixelPass.getMappedData(
+            jsonData: json,
+            cborEnable: false
+        ) as! [AnyHashable: Any]
+
+        XCTAssertTrue(mapped.keys.allSatisfy { $0 is Int })
+    }
+    
+    func testClaim169_MixedKnownAndUnknown_RoundTrip() throws {
+        let json: [String: Any] = [
+            "Full Name": "John Doe",
+            "Issuer Note": "Verified at source"
+        ]
+
+        let encoded = pixelPass.getMappedData(
+            jsonData: json,
+            cborEnable: true
+        ) as! String
+
+        let decoded = pixelPass.decodeMappedData(data: encoded)
+
+        let decodedJson = try JSONSerialization.jsonObject(
+            with: Data(decoded.utf8)
+        ) as! [String: Any]
+
+        XCTAssertEqual(decodedJson["Full Name"] as? String, "John Doe")
+        XCTAssertEqual(decodedJson["Issuer Note"] as? String, "Verified at source")
+    }
+    
+    func testClaim169_ArrayOfObjects_BatchEncodeAndDecode() throws {
+        let json1: [String: Any] = [
+            "Full Name": "John Doe",
+            "Gender": "Male"
+        ]
+
+        let json2: [String: Any] = [
+            "Full Name": "John",
+            "Gender": "Female"
+        ]
+
+        let jsonArray: [[String: Any]] = [
+            json1,
+            json2
+        ]
+
+        let encodedBatch = pixelPass.getMappedData(
+            jsonArray: jsonArray,
+            cborEnable: true
+        ) as! [String]
+
+        XCTAssertEqual(encodedBatch.count, 2)
+        XCTAssertFalse(encodedBatch[0].isEmpty)
+        XCTAssertFalse(encodedBatch[1].isEmpty)
+
+        let decodedBatch = pixelPass.decodeMappedData(
+            dataArray: encodedBatch
+        )
+
+        XCTAssertEqual(decodedBatch.count, 2)
+
+        
+        let decoded1 = try JSONSerialization.jsonObject(
+            with: Data(decodedBatch[0].utf8)
+        ) as! [String: Any]
+
+        let decoded2 = try JSONSerialization.jsonObject(
+            with: Data(decodedBatch[1].utf8)
+        ) as! [String: Any]
+
+        XCTAssertEqual(decoded1["Full Name"] as? String, "John Doe")
+        XCTAssertEqual(decoded1["Gender"] as? String, "Male")
+
+        XCTAssertEqual(decoded2["Full Name"] as? String, "John")
+        XCTAssertEqual(decoded2["Gender"] as? String, "Female")
+    }
+
+    func testClaim169_CBOR_IsDeterministic() {
+        let json: [String: Any] = [
+            "Full Name": "John Doe",
+            "Gender": "Male"
+        ]
+
+        let encoded1 = pixelPass.getMappedData(
+            jsonData: json,
+            cborEnable: true
+        ) as! String
+
+        let encoded2 = pixelPass.getMappedData(
+            jsonData: json,
+            cborEnable: true
+        ) as! String
+
+        XCTAssertEqual(encoded1, encoded2)
+    }
+
+    func testClaim169_EmptyObject_DoesNotEncodeToNull() {
+        let encoded = pixelPass.getMappedData(
+            jsonData: [:],
+            cborEnable: true
+        ) as! String
+
+        XCTAssertNotEqual(encoded.lowercased(), "f6")
+    }
+ 
+    func testClaim169_SingleVsBatchParity() throws {
+        let json: [String: Any] = [
+            "Full Name": "John Doe",
+            "Gender": "Male"
+        ]
+
+        let singleEncoded = pixelPass.getMappedData(
+            jsonData: json,
+            cborEnable: true
+        ) as! String
+
+        let batchEncoded = pixelPass.getMappedData(
+            jsonArray: [json],
+            cborEnable: true
+        ) as! [String]
+
+        XCTAssertEqual(batchEncoded.count, 1)
+        XCTAssertEqual(batchEncoded[0], singleEncoded)
+    }
+    
+    func testClaim169_BatchDecode_OrderIsPreserved() throws {
+        let jsonArray: [[String: Any]] = [
+            ["Full Name": "First"],
+            ["Full Name": "Second"],
+            ["Full Name": "Third"]
+        ]
+
+        let encodedBatch = pixelPass.getMappedData(
+            jsonArray: jsonArray,
+            cborEnable: true
+        ) as! [String]
+
+        let decodedBatch = pixelPass.decodeMappedData(
+            dataArray: encodedBatch
+        )
+
+        let decoded0 = try JSONSerialization.jsonObject(
+            with: Data(decodedBatch[0].utf8)
+        ) as! [String: Any]
+
+        let decoded1 = try JSONSerialization.jsonObject(
+            with: Data(decodedBatch[1].utf8)
+        ) as! [String: Any]
+
+        XCTAssertEqual(decoded0["Full Name"] as? String, "First")
+        XCTAssertEqual(decoded1["Full Name"] as? String, "Second")
+    }
+
+    func testClaim169_UnknownEnumValue_Preserved() throws {
+        let json: [String: Any] = [
+            "Gender": "NonBinary"
+        ]
+
+        let encoded = pixelPass.getMappedData(
+            jsonData: json,
+            cborEnable: true
+        ) as! String
+
+        let decoded = pixelPass.decodeMappedData(data: encoded)
+
+        let decodedJson = try JSONSerialization.jsonObject(
+            with: Data(decoded.utf8)
+        ) as! [String: Any]
+
+        XCTAssertEqual(decodedJson["Gender"] as? String, "NonBinary")
+    }
+    
+    func testClaim169_MultipleBiometrics_RoundTrip() throws {
+        let json: [String: Any] = [
+            "ID": "5001",
+            "Right Thumb": [
+                "Data": "AAA",
+                "Data format": "Image",
+                "Data sub format": "PNG"
+            ],
+            "Left Iris": [
+                "Data": "BBB",
+                "Data format": "Image",
+                "Data sub format": "JPEG"
+            ]
+        ]
+
+        let encoded = pixelPass.getMappedData(
+            jsonData: json,
+            cborEnable: true
+        ) as! String
+
+        let decoded = pixelPass.decodeMappedData(data: encoded)
+
+        let decodedJson = try JSONSerialization.jsonObject(
+            with: Data(decoded.utf8)
+        ) as! [String: Any]
+
+        XCTAssertEqualDictionaries(json, decodedJson)
+    }
+    
+    func testClaim169_BiometricWithUnknownNestedFields() throws {
+        let json: [String: Any] = [
+            "Full Name": "Alice",
+            "Face": [
+                "Data": "FACE123",
+                "Data format": "Image",
+                "Data sub format": "JPEG",
+                "Capture Device": "Canon EOS"
+            ]
+        ]
+
+        let encoded = pixelPass.getMappedData(
+            jsonData: json,
+            cborEnable: true
+        ) as! String
+
+        let decoded = pixelPass.decodeMappedData(data: encoded)
+
+        let decodedJson = try JSONSerialization.jsonObject(
+            with: Data(decoded.utf8)
+        ) as! [String: Any]
+
+        XCTAssertEqualDictionaries(json, decodedJson)
+    }
+    
+    
+    func testClaim169_DeepMixedDocument_RoundTrip() throws {
+        let json: [String: Any] = [
+            "ID": "9009",
+            "Version": "1.0",
+            "Language": "en",
+            "Gender": "Female",
+            "Left Thumb": [
+                "Data": "LT123",
+                "Data format": "Template",
+                "Data sub format": "Fingerprint Template ISO 19794-2"
+            ],
+            "Right Iris": [
+                "Data": "RI456",
+                "Data format": "Image",
+                "Data sub format": "JPEG2000"
+            ],
+            "Issuer Note": "Verified manually"
+        ]
+
+        let encoded = pixelPass.getMappedData(
+            jsonData: json,
+            cborEnable: true
+        ) as! String
+
+        let decoded = pixelPass.decodeMappedData(data: encoded)
+
+        let decodedJson = try JSONSerialization.jsonObject(
+            with: Data(decoded.utf8)
+        ) as! [String: Any]
+
+        XCTAssertEqualDictionaries(json, decodedJson)
+    }
+
+    func testClaim169_MappedOutput_UsesIntegerKeys() {
+        let json = [
+            "Full Name": "John",
+            "Gender": "Male"
+        ]
+
+        let mapped = pixelPass.getMappedData(
+            jsonData: json,
+            cborEnable: false
+        ) as! [AnyHashable: Any]
+
+        XCTAssertTrue(mapped.keys.allSatisfy { $0 is Int })
+    }
+
+    func testClaim169_MappedOutput_BiometricEnumsAreInts() {
+        let json: [String: Any] = [
+            "Left Thumb": [
+                "Data": "123",
+                "Data format": "Template",
+                "Data sub format": "Fingerprint Template NIST"
+            ]
+        ]
+
+        let mapped = pixelPass.getMappedData(
+            jsonData: json,
+            cborEnable: false
+        ) as! [AnyHashable: Any]
+
+        
+        let bio = mapped[55] as! [AnyHashable: Any]
+
+        XCTAssertTrue(bio[1] is Int)
+
+        XCTAssertTrue(bio[2] is Int)
+
+        XCTAssertEqual(bio[1] as? Int, 1)
+        XCTAssertEqual(bio[2] as? Int, 2)
+    }
+
+
+
 }
 
 func XCTAssertEqualDictionaries(_ expected: [String: Any], _ actual: [String: Any], file: StaticString = #file, line: UInt = #line) {

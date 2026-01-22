@@ -164,6 +164,47 @@ public class PixelPass {
         return cborEncodableData.encode().toHexString()
     }
     
+    public func getMappedData(
+            jsonData: [String: Any],
+            keyMapper: [String: Any] = Constants.claim169KeyMapper,
+            valueMapper: [String: [AnyHashable: Any]] = Constants.claim169ValueMapper,
+            cborEnable: Bool = false
+        ) -> Any {
+
+            let mapped = mapJsonWithKeyAndValueMapper(
+                jsonData,
+                keyMapper: keyMapper,
+                valueMapper: valueMapper
+            )
+
+            if cborEnable {
+                let cbor = convertToCBOREncodableFormat(input: mapped)
+                return cbor.encode().toHexString()
+            }
+
+            return mapped
+        }
+    
+    public func getMappedData(
+        jsonArray: [[String: Any]],
+        keyMapper: [String: Any] = Constants.claim169KeyMapper,
+        valueMapper: [String: [AnyHashable: Any]] = Constants.claim169ValueMapper,
+        cborEnable: Bool = false
+    ) -> [Any] {
+
+        return jsonArray.map {
+            getMappedData(
+                jsonData: $0,
+                keyMapper: keyMapper,
+                valueMapper: valueMapper,
+                cborEnable: cborEnable
+            )
+        }
+    }
+    
+    
+
+    
     public func decodeMappedData(stringData: String, mapper: [String: String]) -> [String: String]? {
         do {
             let data = [UInt8](Data(hexString: stringData) ?? Data())
@@ -186,6 +227,38 @@ public class PixelPass {
             return nil
         }
     }
+    
+    public func decodeMappedData(
+        data: String,
+        keyMapper: [[String: String]] = Constants.claim169ReverseKeyMapper,
+        valueMapper: ([String: Any]) -> [String: Any] = replaceValuesForClaim169
+    ) -> String {
+
+        let json: [String: Any]
+
+        if let bytes = Data(hexString: data),
+           let cbor = try? CBOR.decode([UInt8](bytes)) {
+            json = cbor.converToJsonCompatibleFormat() as? [String: Any] ?? [:]
+        } else {
+            json = (try? JSONSerialization.jsonObject(with: Data(data.utf8))) as? [String: Any] ?? [:]
+        }
+
+        let remappedAny = keyMapper.enumerated().reduce(json as Any) { acc, pair in
+            replaceKeysAtDepth(
+                json: acc,
+                mapper: pair.element,
+                targetDepth: pair.offset
+            )
+        }
+
+        guard let remapped = remappedAny as? [String: Any] else { return "" }
+
+        let final = valueMapper(remapped)
+
+        let encoded = try? JSONSerialization.data(withJSONObject: final, options: [])
+        return encoded.flatMap { String(data: $0, encoding: .utf8) } ?? ""
+    }
+
     
     func translateToJSON(jsonData: Data, mapper: [String: String]) -> [String: String] {
         do {
@@ -227,5 +300,20 @@ public class PixelPass {
             throw decodeByteArrayError.customError(description: "error occurred while parsing  data - \(error.localizedDescription)")
         }
     }
+    
+    public func decodeMappedData(
+        dataArray: [String],
+        keyMapper: [[String: String]] = Constants.claim169ReverseKeyMapper,
+        valueMapper: ([String: Any]) -> [String: Any] = replaceValuesForClaim169
+    ) -> [String] {
+        return dataArray.map { item in
+            decodeMappedData(
+                data: item,
+                keyMapper: keyMapper,
+                valueMapper: valueMapper
+            )
+        }
+    }
 }
 #endif
+
