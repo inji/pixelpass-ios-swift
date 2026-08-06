@@ -7,6 +7,7 @@ on:
       - develop
       - feature/**
       - hotfix/**
+      - release*
   pull_request:
     types: [opened, reopened, synchronize]
     branches:
@@ -14,7 +15,7 @@ on:
       - develop
       - feature/**
       - hotfix/**
-
+      - release*
 jobs:
   build-swift:
     runs-on: macos-14
