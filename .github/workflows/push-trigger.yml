@@ -43,7 +43,7 @@ jobs:
         if: "${{ github.event_name != 'pull_request' && failure() }}"
 
   sonar_analysis:
-    uses: mosip/kattu/.github/workflows/swift-sonar-analysis.yml@gpgupdate-masterj21
+    uses: mosip/kattu/.github/workflows/swift-sonar-analysis.yml@v0.0.1
     if: "${{  github.event_name != 'pull_request' }}"
     with:
       SERVICE_LOCATION: "."
