@@ -18,7 +18,7 @@ on:
       - release*
 jobs:
   build-swift:
-    runs-on: macos-14
+    runs-on: macos-26
     
     steps:
       - name: Checkout code
@@ -31,7 +31,7 @@ jobs:
         run: xcodebuild -scheme pixelpass -destination 'generic/platform=iOS' build
 
       - name: Run tests
-        run: xcodebuild test -scheme pixelpassTests -destination 'platform=iOS Simulator,OS=latest,name=iPhone 15'
+        run: xcodebuild test -scheme pixelpassTests -destination 'platform=iOS Simulator,OS=latest,name=iPhone 17'
 
       - name: Notify on Slack
         uses: 8398a7/action-slack@v3
