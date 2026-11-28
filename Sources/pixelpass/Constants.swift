@@ -3,6 +3,7 @@ import Foundation
      static let headerSize = 2
      static let initialBufferSizeMultiplier = 4
      static let extraBufferSize = 8 * 1024
+     static let maxDecompressionBufferSize = 1024 * 1024
     
      static let compressionHeader: [UInt8] = [0x78, 0x01]
      static let checksumSize = MemoryLayout<UInt32>.size
@@ -33,6 +34,11 @@ import Foundation
          "Binary Image": 16,
          "Binary Image Format": 17,
          "Best Quality Fingers": 18,
+         "Full Name - Secondary Language": 19,
+         "Secondary Language": 20,
+         "Location Code": 21,
+         "Legal Status": 22,
+         "Country of Issuance": 23,
          "Right Thumb": 50,
          "Right Pointer Finger": 51,
          "Right Middle Finger": 52,
@@ -118,6 +124,11 @@ import Foundation
              "16": "Binary Image",
              "17": "Binary Image Format",
              "18": "Best Quality Fingers",
+             "19": "Full Name - Secondary Language",
+             "20": "Secondary Language",
+             "21": "Location Code",
+             "22": "Legal Status",
+             "23": "Country of Issuance",
              "50": "Right Thumb",
              "51": "Right Pointer Finger",
              "52": "Right Middle Finger",

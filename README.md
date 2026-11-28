@@ -1,14 +1,15 @@
 
 # PixelPass
 
-PixelPass is a Swift library designed for encoding, decoding, and generating QR codes. It leverages Base45 encoding and Zlib compression to manage data efficiently, making it particularly useful for mobile applications where data size and integrity are crucial.
+PixelPass is a Swift library designed for encoding, decoding, and generating QR codes. It leverages Base45 encoding and supports both Zlib and Brotli compression to manage data efficiently, making it particularly useful for mobile applications where data size and integrity are crucial.
 
 ## Features
 
 - **Base45 Encoding/Decoding**: Encode and decode strings using Base45.
-- **Zlib Compression/Decompression**: Compress and decompress data efficiently.
+- **Zlib & Brotli Compression/Decompression**: Supports both Zlib and Brotli compression for encoding and automatic decompression during decoding.
 - **QR Code Generation**: Create QR codes from strings with customizable error correction levels.
 - Convert CBOR encoded base64Url string to JSON
+- Brotli compression/decompression is available on iOS 15 and above.
 
 ## Installation
 
@@ -43,12 +44,13 @@ if let qrCodeData = pixelPass.generateQRCode(data: "Hello, World!", ecc: .M, hea
     // Use qrCodeData in your application (e.g., display in an ImageView)
 }
 ```
-### `generateQRData(input: String) -> String?`
+### `generateQRData(input: String, compressionType: CompressionType = .zlib) -> String?`
 
-Generates a Base45 encoded string from the provided input after compressing it using Zlib. This method handles the compression and encoding of the input string.
+Generates a Base45 encoded string from the provided input after compressing it using the selected compression algorithm. Zlib is used by default, and Brotli can be selected explicitly. This method handles the compression and encoding of the input string.
 
 **Parameters:**
 - `input`: The string to compress and encode.
+- `compressionType`: Compression algorithm to use. Defaults to `.zlib`. Use `.brotli` to generate Brotli-compressed payloads.
 
 **Returns:**
 - The Base45 encoded string, or `nil` if an error occurs.
@@ -57,19 +59,27 @@ Generates a Base45 encoded string from the provided input after compressing it u
 
 ```swift
 let pixelPass = PixelPass()
-if let encodedString = pixelPass.generateQRData("Hello, World!") {
-    print(encodedString)
-} else {
-    print("Failed to generate QR data.")
+
+// Default (Zlib)
+if let zlibData = pixelPass.generateQRData("Hello, World!") {
+    print(zlibData)
+}
+
+// Brotli
+if let brotliData = pixelPass.generateQRData(
+    "Hello, World!",
+    compressionType: .brotli
+) {
+    print(brotliData)
 }
 ```
 
 ### `decode(data: String) -> Data?`
 
-Decodes a given Base45 encoded string which is expected to be Zlib compressed. This method handles the decompression and Base45 decoding of the input string.
+Decodes a Base45 encoded string compressed using either Zlib or Brotli. The compression format is detected automatically during decoding. This method handles the decompression and Base45 decoding of the input string.
 
 **Parameters:**
-- `data`: The Base45 encoded and Zlib compressed string.
+- `data`: The Base45 encoded compressed string.
 
 **Returns:**
 - The decompressed and decoded data as a `Data` object, or `nil` if an error occurs.
@@ -190,4 +200,4 @@ if let qrString = pixelPass.generateQRData("Hello World") {
         // Use it in your UI
     }
 }
-
+```

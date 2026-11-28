@@ -1,7 +1,7 @@
 import Foundation
 import Compression
 
-class Zlib {
+class Zlib: Compression {
     
     
 
@@ -23,7 +23,7 @@ class Zlib {
         return result
     }
 
-    func compress(data: Any, algorithm: compression_algorithm = COMPRESSION_ZLIB) -> Data? {
+    func compress(data: Any) -> Data? {
         var sourceBuffer: [UInt8]
 
         if let stringData = data as? String {
@@ -45,7 +45,7 @@ class Zlib {
         let compressedSize = compression_encode_buffer(destinationBuffer, destinationBufferSize,
                                                        &sourceBuffer, sourceBuffer.count,
                                                        nil,
-                                                       algorithm)
+                                                       COMPRESSION_ZLIB)
         if compressedSize == 0 {
             return nil
         }
