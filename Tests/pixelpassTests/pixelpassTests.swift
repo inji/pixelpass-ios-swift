@@ -5,17 +5,17 @@ import Foundation
 
 class PixelPassTests: XCTestCase {
     var pixelPass: PixelPass!
-    
+
     override func setUp() {
         super.setUp()
         pixelPass = PixelPass()
     }
-    
+
     override func tearDown() {
         pixelPass = nil
         super.tearDown()
     }
-    
+
     func testEncodeStandardInput() {
         let inputString = "Hello, World!"
         let encoded = pixelPass.generateQRData(inputString)
@@ -24,30 +24,30 @@ class PixelPassTests: XCTestCase {
         XCTAssertTrue(encoded!.count > 0, "The encoded string should have length greater than zero.")
         XCTAssert((encoded != nil),expectedEncodedString,file: "Encoded string should be same as expected encoded string")
     }
-    
+
     func testEncodeEmptyInput() {
         let emptyInput = ""
         let encoded = pixelPass.generateQRData(emptyInput)
         XCTAssertNil(encoded, "Encoding should return nil for an empty string.")
     }
-    
+
     func testDecodeValidInput() {
         let inputString = "V7F0YUV0QBNP:AAT8QZPP+AAV00./JG2"
         let decodedData = pixelPass.decode(data: inputString)
-        
+
         let expectedDecodedString="Hello, World!"
         XCTAssertNotNil(decodedData, "Decoding should succeed for valid encoded input.")
         let decodedString = String(data: decodedData!, encoding: .utf8)
         XCTAssertEqual(decodedString, expectedDecodedString, "The decoded string should match the expected decoded string.")
-        
+
     }
-    
+
     func testDecodeInvalidInput() {
         let invalidBase45String = "#$%^&*()_+"
         let decodedData = pixelPass.decode(data: invalidBase45String)
         XCTAssertNil(decodedData, "Decode should return nil for invalid Base45 input.")
     }
-    
+
     func testEncodeAndDecodeCycle() {
         // Test case for non-empty string
         let inputString = "Hello, this is a test string for PixelPass encoding and decoding."
@@ -58,12 +58,12 @@ class PixelPassTests: XCTestCase {
         } else {
             XCTFail("Encoding or decoding failed.")
         }
-        
+
         // Test case for empty string
         let emptyInput = ""
         XCTAssertNil(pixelPass.generateQRData(emptyInput), "Encoding should return nil for an empty string.")
     }
-    
+
     func testEncodeAndDecodeCycleWithBrotli() {
         let inputString = "Hello, this is a Brotli compression test."
 
@@ -87,19 +87,74 @@ class PixelPassTests: XCTestCase {
             "Decoded string should match the original input."
         )
     }
-    
+
+    func testDecodeKotlinGeneratedBrotliPayload() {
+        let kotlinGeneratedPayload = ".PHZBGFVCBEC$ C8C8OEDZ C5EC5ZCXZ3"
+
+        guard let decodedData = pixelPass.decode(data: kotlinGeneratedPayload) else {
+            XCTFail("Failed to decode Kotlin-generated Brotli payload.")
+            return
+        }
+
+        guard
+            let decodedJSON = try? JSONSerialization.jsonObject(with: decodedData) as? [String: Any],
+            let expectedData = #"{"name":"Alice","age":30}"#.data(using: .utf8),
+            let expectedJSON = try? JSONSerialization.jsonObject(with: expectedData) as? [String: Any]
+        else {
+            XCTFail("Failed to parse decoded or expected JSON.")
+            return
+        }
+
+        XCTAssertEqual(
+            decodedJSON["name"] as? String,
+            expectedJSON["name"] as? String
+        )
+
+        XCTAssertEqual(
+            decodedJSON["age"] as? Int,
+            expectedJSON["age"] as? Int
+        )
+    }
+
+    func testEncodeAndDecodeCycleWithBrotliLargePayload() {
+        let inputString = String(
+            repeating: "PixelPass Brotli compression test with a larger payload. ",
+            count: 10_000
+        )
+
+        guard let encoded = pixelPass.generateQRData(
+            inputString,
+            compressionType: .brotli
+        ) else {
+            XCTFail("Encoding large Brotli payload failed.")
+            return
+        }
+
+        guard let decodedData = pixelPass.decode(data: encoded),
+              let decodedString = String(data: decodedData, encoding: .utf8) else {
+            XCTFail("Decoding large Brotli payload failed.")
+            return
+        }
+
+        XCTAssertEqual(
+            decodedString,
+            inputString,
+            "Decoded large payload should match the original input."
+        )
+    }
+
     func testGenerateQRCode() {
         let inputString = "Test QR Code generation"
         let qrCodeImage = pixelPass.generateQRCode( data: inputString,ecc: ECC.M)
-        
+
         XCTAssertNotNil(qrCodeImage, "QR Code generation should succeed and return a non-nil UIImage.")
     }
-    
+
     func testDecodeErrorHandling() {
         let incorrectBase45String = "This is not a Base45 string"
         XCTAssertNil(pixelPass.decode(data: incorrectBase45String), "Decode should return nil for incorrect Base45 encoded strings.")
     }
-    
+
     func testDecodeValidInputCBOR() {
         let inputString = "V7F3QBXJA5NJRCOC004 QN4"
         let decodedData = pixelPass.decode(data: inputString)
@@ -108,7 +163,7 @@ class PixelPassTests: XCTestCase {
         let decodedString = String(data: decodedData!, encoding: .utf8)
         XCTAssertEqual(decodedString, expectedDecodedString, "The decoded string should match the expected decoded string.")
     }
-    
+
     func testEncodeValidInputCBOR() {
         let inputString = "{\"temp\":15}"
         let encoded = pixelPass.generateQRData(inputString)
@@ -117,7 +172,7 @@ class PixelPassTests: XCTestCase {
         XCTAssertTrue(encoded!.count > 0, "The encoded string should have length greater than zero.")
         XCTAssertEqual(encoded,expectedEncodedString, "Encoded string should be same as expected encoded string")
     }
-    
+
     func testEncodeAndDecodeInputCBOR() {
         let inputString = "{\"temp\":123}],\"bool\":true,\"arryF\":[1,2.5,3,-4,\"hello\",{\"temp\":123}],\"arryE\":[]}"
         let encoded = pixelPass.generateQRData(inputString)!
@@ -126,27 +181,27 @@ class PixelPassTests: XCTestCase {
         XCTAssertNotNil(decodedString, "Decoding should succeed for valid encoded input.")
         XCTAssertEqual(inputString,decodedString, "Decoded string should be same as expected input string")
     }
-    
+
     func testJsonMappedCBOREncode() {
         let jsonData = "{\"id\": \"207\"}"
         let mapper = ["id": "1"]
         let expectedCborEncodedString = "a1613163323037"
         let cborEncodedData = pixelPass.getMappedData(stringData: jsonData,mapper: mapper,cborEnable: true)
-        
+
         XCTAssertNotNil(cborEncodedData, "JSON mapping should succeed for valid input.")
         XCTAssertEqual(cborEncodedData,expectedCborEncodedString, "Encoded string should be same as expected string")
     }
-    
+
     func testJsonMappedEncode() {
         let jsonData = "{\"id\": \"207\"}"
         let mapper = ["id": "1"]
         let expectedMappedData = "{\"1\":\"207\"}"
         let mappedData = pixelPass.getMappedData(stringData: jsonData,mapper: mapper)
-        
+
         XCTAssertNotNil(mappedData, "JSON mapping should succeed for valid input.")
         XCTAssertEqual(mappedData,expectedMappedData, "Encoded string should be same as expected string")
     }
-    
+
     func testJsonMappedCBORDecode() {
         let expected = ["id": "207", "name": "Jhon", "l_name": "Honay"]
         let mapper = ["1": "id", "2": "name", "3": "l_name"]
@@ -155,7 +210,7 @@ class PixelPassTests: XCTestCase {
         XCTAssertNotNil(jsonData, "JSON mapping should succeed for valid input.")
         XCTAssertEqual(jsonData,expected, "Decoded JSON should be same as expected JSON")
     }
-    
+
     func testJsonMappedDecode() {
         let expected = ["id": "207", "name": "Jhon", "l_name": "Honay"]
         let mapper = ["1": "id", "2": "name", "3": "l_name"]
@@ -164,17 +219,17 @@ class PixelPassTests: XCTestCase {
         XCTAssertNotNil(jsonData, "JSON mapping should succeed for valid input.")
         XCTAssertEqual(jsonData,expected, "Decoded JSON should be same as expected JSON")
     }
-    
+
     func testByteArrayValidInput() {
-        
+
         clearTemporaryDirectory()
-        
+
         let fileManager = FileManager.default
         let tempdir = FileManager.default.temporaryDirectory
         let inputString = "Hello, World!"
         let fileURL = tempdir.appendingPathComponent("certificate.json")
         let zipURL = tempdir.appendingPathComponent("temp.zip")
-        
+
         var decodedString = ""
         do {
             try inputString.write(to: fileURL, atomically: true, encoding: .utf8)
@@ -188,15 +243,15 @@ class PixelPassTests: XCTestCase {
         XCTAssertNotNil(decodedString, "The decoded string should not be empty.")
         XCTAssertEqual(inputString, decodedString, "The decoded string should match the expected decoded string.")
     }
-    
+
     func testByteArrayInvalidInput() {
-        
+
         clearTemporaryDirectory()
-        
+
         let tempDirectory = FileManager.default.temporaryDirectory
         let tempTxtFileURL = tempDirectory.appendingPathComponent("temp.txt")
         let content = "This is a test text file."
-        
+
         do {
             try content.write(to: tempTxtFileURL, atomically: true, encoding: .utf8)
             let fileData = try Data(contentsOf: tempTxtFileURL)
@@ -212,31 +267,31 @@ class PixelPassTests: XCTestCase {
             XCTFail("Error reading text file: \(error)")
         }
     }
-    
+
     func testBase64EncodedCborDataToJsonConversionSuccess() {
         do {
             let data = "qmx1bnNpZ25lZF9pbnQYKmxuZWdhdGl2ZV9pbnQma2J5dGVfc3RyaW5nRN6tvu9rdGV4dF9zdHJpbmdlaGVsbG9lYXJyYXmDAQIDY21hcKJhYQFhYgJjdGFn2QPobHRhZ2dlZF92YWx1ZWVmbG9hdPtACR64UeuFH2ZzaW1wbGX2c2VtYmVkZGVkX2Nib3JfdGFnMjTYGEloZW1iZWRkZWQ="
             let jsonData = try pixelPass.toJson(base64UrlEncodedCborEncodedString: data)
             let expectedData: [String: Any] = ["text_string": "hello", "unsigned_int": 42, "array": [1, 2, 3], "float": 3.14, "embedded_cbor_tag24": "embedded", "map": ["a": 1, "b": 2], "tag": "tagged_value", "negative_int": -7, "simple": NSNull(), "byte_string": "\u{07AD}��"]
-            
+
             XCTAssertEqualDictionaries(expectedData, jsonData as! [String : Any])
         } catch let error {
             XCTFail("Expected success, but got error: \(error)")
         }
     }
-    
+
     func testBase64EncodedCborDataToJsonConversionThrowsErrorWhenDecodingFails() {
         let data = "omd2ZXJzaW9uYzEuMGRkYXRhgaJiazFidjFiazKiZGsyLjGhZmsyLjEuMYHYGEmhZmsyLjEuMQFkazIuMoRDoQEmoRghWQFjMIIBXzCCAQSgAwIBAgIGAYwpA4_aMAoGCCqGSM49BAMCMDYxNDAyBgNVBAMMKzNfd1F3Y3Qxd28xQzBST3FfWXRqSTRHdTBqVXRiVTJCQXZteEltQzVqS3MwHhcNMjMxMjAyMDUzMjI4WhcNMjQwOTI3MDUzMjI4WjA2MTQwMgYDVQQDDCszX3dRd2N0MXdvMUMwUk9xX1l0akk0R3UwalV0YlUyQkF2bXhJbUM1aktzMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEQw7367PjIwU17ckX_G4ZqLW2EjPG0efV0cYzhvq2Ujkymrc33RVkgEE6q9iAAeLhl85IraAzT39SjOBV6w"
-        
+
         XCTAssertThrowsError(try pixelPass.toJson(base64UrlEncodedCborEncodedString: data)) { error in
             guard case let decodeByteArrayError.customError(message) = error else {
                 return XCTFail("Expected decodeError.customError, but got a different error")
             }
-            
+
             XCTAssertEqual(message, "error occurred while parsing  data - The operation couldn’t be completed. (pixelpass.decodeError error 0.)", "The error message does not match")
         }
     }
-    
+
     func testGenerateQRImageDataProducesPNG() {
         let text = "Hello QR"
         guard let data = pixelPass.generateQRImageData(qrText: text, ecc: ECC.L) else {
@@ -248,7 +303,7 @@ class PixelPassTests: XCTestCase {
         XCTAssertEqual(prefix, pngMagic, "Generated data should start with PNG signature")
         XCTAssertTrue(data.count > 0, "Generated PNG should be non-empty")
     }
-    
+
     func testGenerateQRImageDataAllECCLevels() {
         let text = "ECC levels"
         for level in [ECC.L, .M, .Q, .H] {
@@ -256,7 +311,7 @@ class PixelPassTests: XCTestCase {
             XCTAssertNotNil(data, "Expected PNG data for ECC level \(level)")
         }
     }
-    
+
     func testClaim169Default_ObjectRoundTrip() throws {
         let originalJson = """
         {
@@ -288,12 +343,12 @@ class PixelPassTests: XCTestCase {
             with: Data(decoded.utf8)
         ) as! [String: Any]
 
-        
+
         XCTAssertEqual(decodedJson["ID"] as? String, "102030")
         XCTAssertEqual(decodedJson["Full Name"] as? String, "John")
         XCTAssertEqual(decodedJson["Gender"] as? String, "Male")
 
-        
+
         let biometric = decodedJson["Left Middle Finger"] as! [String: Any]
 
         XCTAssertEqual(biometric["Data"] as? String, "9988")
@@ -304,7 +359,7 @@ class PixelPassTests: XCTestCase {
         )
     }
 
-    
+
     func testClaim169_UsesIntegerKeys() {
         let json: [String: Any] = [
             "Full Name": "John Doe",
@@ -318,7 +373,7 @@ class PixelPassTests: XCTestCase {
 
         XCTAssertTrue(mapped.keys.allSatisfy { $0 is Int })
     }
-    
+
     func testClaim169_MixedKnownAndUnknown_RoundTrip() throws {
         let json: [String: Any] = [
             "Full Name": "John Doe",
@@ -339,7 +394,7 @@ class PixelPassTests: XCTestCase {
         XCTAssertEqual(decodedJson["Full Name"] as? String, "John Doe")
         XCTAssertEqual(decodedJson["Issuer Note"] as? String, "Verified at source")
     }
-    
+
     func testClaim169_ArrayOfObjects_BatchEncodeAndDecode() throws {
         let json1: [String: Any] = [
             "Full Name": "John Doe",
@@ -371,7 +426,7 @@ class PixelPassTests: XCTestCase {
 
         XCTAssertEqual(decodedBatch.count, 2)
 
-        
+
         let decoded1 = try JSONSerialization.jsonObject(
             with: Data(decodedBatch[0].utf8)
         ) as! [String: Any]
@@ -414,7 +469,7 @@ class PixelPassTests: XCTestCase {
 
         XCTAssertNotEqual(encoded.lowercased(), "f6")
     }
- 
+
     func testClaim169_SingleVsBatchParity() throws {
         let json: [String: Any] = [
             "Full Name": "John Doe",
@@ -434,7 +489,7 @@ class PixelPassTests: XCTestCase {
         XCTAssertEqual(batchEncoded.count, 1)
         XCTAssertEqual(batchEncoded[0], singleEncoded)
     }
-    
+
     func testClaim169_BatchDecode_OrderIsPreserved() throws {
         let jsonArray: [[String: Any]] = [
             ["Full Name": "First"],
@@ -481,7 +536,7 @@ class PixelPassTests: XCTestCase {
 
         XCTAssertEqual(decodedJson["Gender"] as? String, "NonBinary")
     }
-    
+
     func testClaim169_MultipleBiometrics_RoundTrip() throws {
         let json: [String: Any] = [
             "ID": "5001",
@@ -510,7 +565,7 @@ class PixelPassTests: XCTestCase {
 
         XCTAssertEqualDictionaries(json, decodedJson)
     }
-    
+
     func testClaim169_BiometricWithUnknownNestedFields() throws {
         let json: [String: Any] = [
             "Full Name": "Alice",
@@ -535,8 +590,8 @@ class PixelPassTests: XCTestCase {
 
         XCTAssertEqualDictionaries(json, decodedJson)
     }
-    
-    
+
+
     func testClaim169_DeepMixedDocument_RoundTrip() throws {
         let json: [String: Any] = [
             "ID": "9009",
@@ -598,7 +653,7 @@ class PixelPassTests: XCTestCase {
             cborEnable: false
         ) as! [AnyHashable: Any]
 
-        
+
         let bio = mapped[55] as! [AnyHashable: Any]
 
         XCTAssertTrue(bio[1] is Int)
@@ -616,6 +671,6 @@ class PixelPassTests: XCTestCase {
 func XCTAssertEqualDictionaries(_ expected: [String: Any], _ actual: [String: Any], file: StaticString = #file, line: UInt = #line) {
     let expectedData = try? JSONSerialization.data(withJSONObject: expected, options: [.sortedKeys])
     let actualData = try? JSONSerialization.data(withJSONObject: actual, options: [.sortedKeys])
-    
+
     XCTAssertEqual(expectedData, actualData, "The dictionaries do not match", file: file, line: line)
 }

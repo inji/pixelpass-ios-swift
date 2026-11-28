@@ -8,28 +8,43 @@ class Brotli: Compression {
             return nil
         }
 
-        let size = Constants.initialBufferSizeMultiplier * data.count + Constants.extraBufferSize
-        let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: size)
-        defer {
-            buffer.deallocate()
-        }
+        var size = min(
+            Constants.initialBufferSizeMultiplier * data.count
+                + Constants.extraBufferSize,
+            Constants.maxDecompressionBufferSize
+        )
 
-        let read = data.withUnsafeBytes {
-            compression_decode_buffer(
-                buffer,
-                size,
-                $0.baseAddress!.bindMemory(to: UInt8.self, capacity: 1),
-                data.count,
-                nil,
-                COMPRESSION_BROTLI
+        while true {
+            let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: size)
+
+            let read = data.withUnsafeBytes {
+                compression_decode_buffer(
+                    buffer,
+                    size,
+                    $0.baseAddress!.bindMemory(to: UInt8.self, capacity: 1),
+                    data.count,
+                    nil,
+                    COMPRESSION_BROTLI
+                )
+            }
+
+            if read > 0 {
+                let result = Data(bytes: buffer, count: read)
+                buffer.deallocate()
+                return result
+            }
+
+            buffer.deallocate()
+
+            if size >= Constants.maxDecompressionBufferSize {
+                return nil
+            }
+
+            size = min(
+                size * 2,
+                Constants.maxDecompressionBufferSize
             )
         }
-
-        if read == 0 {
-            return nil
-        }
-
-        return Data(bytes: buffer, count: read)
     }
 
     func compress(data: Any) -> Data? {
@@ -43,15 +58,25 @@ class Brotli: Compression {
             return nil
         }
 
-        let destinationBufferSize = sourceBuffer.count + (sourceBuffer.count / Constants.compressionRatioDenominator) + Constants.compressionOverhead
-        let destinationBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: destinationBufferSize)
+        let destinationBufferSize =
+            sourceBuffer.count
+            + (sourceBuffer.count / Constants.compressionRatioDenominator)
+            + Constants.compressionOverhead
+
+        let destinationBuffer =
+            UnsafeMutablePointer<UInt8>.allocate(
+                capacity: destinationBufferSize
+            )
+
         defer {
             destinationBuffer.deallocate()
         }
 
         let compressedSize = compression_encode_buffer(
-            destinationBuffer, destinationBufferSize,
-            &sourceBuffer, sourceBuffer.count,
+            destinationBuffer,
+            destinationBufferSize,
+            &sourceBuffer,
+            sourceBuffer.count,
             nil,
             COMPRESSION_BROTLI
         )
@@ -60,6 +85,9 @@ class Brotli: Compression {
             return nil
         }
 
-        return Data(bytes: destinationBuffer, count: compressedSize)
+        return Data(
+            bytes: destinationBuffer,
+            count: compressedSize
+        )
     }
 }

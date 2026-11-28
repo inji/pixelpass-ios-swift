@@ -3,6 +3,7 @@ import Foundation
      static let headerSize = 2
      static let initialBufferSizeMultiplier = 4
      static let extraBufferSize = 8 * 1024
+     static let maxDecompressionBufferSize = 1024 * 1024
     
      static let compressionHeader: [UInt8] = [0x78, 0x01]
      static let checksumSize = MemoryLayout<UInt32>.size

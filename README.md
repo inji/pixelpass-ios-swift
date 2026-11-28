@@ -9,6 +9,7 @@ PixelPass is a Swift library designed for encoding, decoding, and generating QR 
 - **Zlib & Brotli Compression/Decompression**: Supports both Zlib and Brotli compression for encoding and automatic decompression during decoding.
 - **QR Code Generation**: Create QR codes from strings with customizable error correction levels.
 - Convert CBOR encoded base64Url string to JSON
+- Brotli compression/decompression is available on iOS 15 and above.
 
 ## Installation
 
